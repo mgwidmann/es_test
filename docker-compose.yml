@@ -1,0 +1,8 @@
+version: "2"
+
+services:
+  estest:
+    build: .
+    entrypoint: /app/blowup
+    command: --host dev.weddingwire.com
+    working_dir: /app
