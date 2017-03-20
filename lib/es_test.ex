@@ -1,13 +1,15 @@
 defmodule ESTest.CLI do
 
-  @switches [host: :string, dry_run: :boolean]
+  @switches [host: :string, dry_run: :boolean, repeat: :integer]
   def main(args) do
     {options, _, _} = OptionParser.parse(args, switches: @switches)
     Application.ensure_all_started(:hackney)
     :ok = :hackney_pool.start_pool(__MODULE__, max_connections: 100)
-    options[:host]
-    |> run(options[:dry_run])
-    |> analyze()
+    for _ <- 1..(options[:repeat] || 1) do
+      options[:host]
+      |> run(options[:dry_run])
+      |> analyze()
+    end
     |> report()
   end
 
@@ -44,7 +46,7 @@ defmodule ESTest.CLI do
   def analyze({actual_time_micro, %HTTPoison.Response{status_code: 200, headers: headers}}, state) do
     headers
     |> Enum.find(&match?({"X-Runtime", _}, &1))
-    |> analyze(actual_time_micro / 1_000, state)
+    |> analyze(actual_time_micro / 1_000_000, state)
   end
   def analyze({"X-Runtime", runtime_string}, actual_time, {average, actual_average, count, failed}) do
     runtime = String.to_float(runtime_string)
@@ -57,6 +59,16 @@ defmodule ESTest.CLI do
     {average, count, failed + 1}
   end
 
+  def report(list) when is_list(list) do
+    list
+    |> Enum.reduce(fn {avg, act_avg, req, failed}, {avg_acc, act_avg_acc, req_acc, failed_acc} ->
+      count = req + req_acc
+      avg = (avg - avg_acc) / count
+      act_avg = (act_avg - act_avg_acc) / count
+      {avg, act_avg, count, failed + failed_acc}
+    end)
+    |> report()
+  end
   def report({average, actual_average, requests, failed}) do
     IO.puts ["Total of ",
               IO.ANSI.cyan, inspect(requests), IO.ANSI.default_color,

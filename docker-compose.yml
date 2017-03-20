@@ -4,5 +4,5 @@ services:
   estest:
     build: .
     entrypoint: /app/blowup
-    command: --host dev.weddingwire.com
+    command: --host dev.weddingwire.com --repeat 10 --dry-run
     working_dir: /app
