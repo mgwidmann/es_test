@@ -2,11 +2,7 @@ FROM ubuntu:16.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 # Set locale correctly so elixir doesn't complain
-ENV LC_ALL=en_US.UTF-8
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US.UTF-8
-RUN locale-gen en_US en_US.UTF-8
-RUN dpkg-reconfigure locales
+ENV LANG C.UTF-8
 
 # Run update to make wget available
 RUN apt-get update
