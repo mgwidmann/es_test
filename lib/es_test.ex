@@ -55,8 +55,8 @@ defmodule ESTest.CLI do
     actual_avg_diff = (actual_time - actual_average) / count
     {avg_diff + average, actual_avg_diff + actual_average, count, failed}
   end
-  def analyze(_, _, {average, count, failed}) do
-    {average, count, failed + 1}
+  def analyze(_, _, {average, actual_average, count, failed}) do
+    {average, actual_average, count, failed + 1}
   end
 
   def report(list) when is_list(list) do
