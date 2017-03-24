@@ -4,7 +4,7 @@ defmodule EsTest.Mixfile do
   def project do
     [app: :es_test,
      version: "0.1.0",
-     elixir: "~> 1.3",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      escript: escript(),
@@ -15,7 +15,7 @@ defmodule EsTest.Mixfile do
     [
       main_module: ESTest.CLI,
       name: "blowup",
-      emu_args: "+A100"
+      emu_args: "+A1000 +P1000000"
     ]
   end
 

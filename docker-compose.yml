@@ -4,5 +4,5 @@ services:
   estest:
     build: .
     entrypoint: /app/blowup
-    command: --host dev.weddingwire.com --repeat 10 --dry-run
+    command: --host mantis.pod.weddingwire.com --repeat 10
     working_dir: /app

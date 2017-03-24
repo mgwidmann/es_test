@@ -4,12 +4,14 @@ defmodule ESTest.CLI do
   def main(args) do
     {options, _, _} = OptionParser.parse(args, switches: @switches)
     Application.ensure_all_started(:hackney)
-    :ok = :hackney_pool.start_pool(__MODULE__, max_connections: 100)
-    for _ <- 1..(options[:repeat] || 1) do
+    :ok = :hackney_pool.start_pool(__MODULE__, max_connections: 1000)
+    Enum.map(1..(options[:repeat] || 1), fn _ ->
       options[:host]
       |> run(options[:dry_run])
-      |> analyze()
-    end
+    end)
+    |> List.flatten()
+    |> Enum.map(&Task.await(&1, :infinity))
+    |> analyze()
     |> report()
   end
 
@@ -23,27 +25,31 @@ defmodule ESTest.CLI do
   @letters ?a..?z
   @partner_key "163r5mm3"
   def run(host, dry_run) do
-    for category <- @categories, letter <- @letters do
-      Task.async(__MODULE__, :search, [host, dry_run, category, letter])
-    end |> Enum.map(&(Task.await(&1, :infinity)))
+    for category <- @categories, letter <- @letters, letter2 <- @letters do
+      Task.async(__MODULE__, :search, [host, dry_run, category, <<letter, letter2>>])
+    end
   end
 
   def search(host, dry_run, category, letter) do
-    url = "https://#{host}/apis/v5/public/#{@partner_key}/vendors/search?category_name=#{category}&vendor_name=#{<<letter>>}"
+    url = "https://#{host}/apis/v5/public/#{@partner_key}/vendors/search?category_name=#{category}&vendor_name=#{letter}"
     IO.puts ["Running against ", IO.ANSI.cyan, url, IO.ANSI.default_color]
     :timer.tc fn ->
       if dry_run do
         Process.sleep(1_000)
         %HTTPoison.Response{status_code: 200, headers: [{"X-Runtime", "1.0"}]}
       else
-        HTTPoison.get!(url, [], hackney: [:insecure, {:pool, __MODULE__}], recv_timeout: :infinity, ssl: [{:versions, [:'tlsv1.2']}])
+        HTTPoison.get!(url, [], hackney: [:insecure, {:pool, __MODULE__}], connect_timeout: :infinity, recv_timeout: :infinity, timeout: :infinity, ssl: [{:versions, [:'tlsv1.2']}])
       end
     end
   end
 
-  def analyze(list) when is_list(list), do: Enum.reduce(list, {0.0, 0.0, 0, 0}, &analyze/2)
+  def analyze(list) when is_list(list) do
+    IO.puts ["Analyzing results..."]
+    Enum.reduce(list, {0.0, 0.0, 0, 0}, &analyze/2)
+  end
 
-  def analyze({actual_time_micro, %HTTPoison.Response{status_code: 200, headers: headers}}, state) do
+  def analyze({actual_time_micro, %HTTPoison.Response{status_code: 200, body: body, headers: headers}}, state) do
+    IO.inspect body
     headers
     |> Enum.find(&match?({"X-Runtime", _}, &1))
     |> analyze(actual_time_micro / 1_000_000, state)
